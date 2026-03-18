@@ -1,111 +1,223 @@
-# Code RAG - Fase 1
+# RepoRAG
 
-## Estructura
+RAG (Retrieval-Augmented Generation) system for querying private code repositories using local LLMs, Qdrant and LangChain/LangGraph.
 
-- `docker-compose.yml`
-- `.env.example`
-- `repos/` → clona aquí repos locales si vas a indexar desde disco
-- `app/` → API FastAPI
+---
 
-## Archivos de la API
+## 🚀 Overview
 
-- `app/Dockerfile`
-- `app/requirements.txt`
-- `app/src/main.py`
-- `app/src/settings.py`
-- `app/src/models.py`
-- `app/src/utils.py`
-- `app/src/github_loader.py`
-- `app/src/indexer.py`
-- `app/src/retriever.py`
+RepoRAG allows you to ask natural language questions about private repositories (code, business logic, architecture) and get contextual answers based on indexed source code.
 
-## Arranque
+It is fully self-hosted and runs locally using Docker.
 
-1. Copia `.env.example` a `.env`
-2. Crea la carpeta `repos/`
-3. Levanta los servicios:
+---
+
+## 🧠 Architecture
+
+```
+Open WebUI → FastAPI (RAG API) → Qdrant (vector DB)
+                                → Ollama (LLM)
+```
+
+### Components
+
+* **Open WebUI**: Chat interface
+* **FastAPI (rag-api)**: Core RAG logic
+* **LangGraph**: Workflow orchestration (retrieve → answer)
+* **Qdrant**: Vector database for embeddings
+* **Ollama**: Local LLM inference
+* **Indexer**: Processes repos (local or GitHub)
+
+---
+
+## ⚙️ Features
+
+### ✅ Implemented (Phase 1)
+
+* RAG over local repositories
+* RAG over GitHub repositories (via API + token)
+* Vector search using Qdrant
+* Local LLM inference via Ollama
+* OpenAI-compatible API (`/v1/chat/completions`)
+* Open WebUI integration
+* Basic chunking + metadata
+* Logging and observability
+
+---
+
+## 📂 Project Structure
+
+```
+rag-codebase/
+├── docker-compose.yml
+├── .env
+├── repos/
+├── app/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
+│       ├── main.py
+│       ├── indexer.py
+│       ├── retriever.py
+│       ├── settings.py
+│       └── utils.py
+```
+
+---
+
+## 🛠️ Setup
+
+### 1. Clone repos
+
+```bash
+git clone <your-private-repo> repos/PortalEmpresas
+```
+
+### 2. Configure `.env`
+
+```env
+CHAT_MODEL=qwen2.5:3b
+QDRANT_URL=http://qdrant:6333
+OLLAMA_BASE_URL=http://ollama:11434
+```
+
+### 3. Start services
 
 ```bash
 docker compose up -d --build
 ```
 
-4. Descarga el modelo de chat en Ollama:
+### 4. Pull model
 
 ```bash
-docker exec -it ollama ollama pull qwen3:8b
+docker exec -it ollama ollama pull qwen2.5:3b
 ```
 
-## Endpoints
+---
 
-### Health
+## 📥 Indexing
+
+### Local repo
 
 ```bash
-curl http://localhost:8000/health
+curl -X POST http://localhost:8000/admin/reindex/PortalEmpresas
 ```
 
-### Reindexar todo
-
-Solo repos locales detectados en `./repos`:
+### GitHub repo
 
 ```bash
 curl -X POST http://localhost:8000/admin/reindex \
-  -H 'Content-Type: application/json' \
-  -d '{"clear_collection": true}'
+  -H "Content-Type: application/json" \
+  -d '{"github_repos": ["https://github.com/org/repo"]}'
 ```
 
-Repos locales específicos y repos GitHub específicos:
+---
+
+## 🔍 Querying
+
+Via Open WebUI or:
 
 ```bash
-curl -X POST http://localhost:8000/admin/reindex \
-  -H 'Content-Type: application/json' \
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
   -d '{
-    "clear_collection": true,
-    "local_repos": ["repo-a", "repo-b"],
-    "github_repos": [
-      "https://github.com/tu-org/proyecto-a",
-      "https://github.com/tu-org/proyecto-b"
+    "model": "rag-codebase",
+    "messages": [
+      {"role": "user", "content": "What does PortalEmpresas do?"}
     ]
   }'
 ```
 
-### Reindexar un repo local
+---
+
+## 🧪 Debugging
+
+### Check Qdrant
 
 ```bash
-curl -X POST http://localhost:8000/admin/reindex/mi-repo-local \
-  -H 'Content-Type: application/json' \
-  -d '{"source": "local", "clear_existing_repo_points": true}'
+curl http://localhost:6333/collections/code_chunks
 ```
 
-### Reindexar un repo GitHub con token
+### Logs
 
 ```bash
-curl -X POST http://localhost:8000/admin/reindex/tu-org/proyecto-a \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "source": "github",
-    "github_url": "https://github.com/tu-org/proyecto-a",
-    "ref": "main",
-    "clear_existing_repo_points": true
-  }'
+docker logs -f rag-api
 ```
 
-### Chat OpenAI-compatible
+Look for:
 
-```bash
-curl -X POST http://localhost:8000/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "qwen3:8b",
-    "messages": [
-      {"role": "user", "content": "¿Dónde se calcula la comisión en el proyecto payments-service?"}
-    ],
-    "temperature": 0.1,
-    "max_tokens": 800
-  }'
-```
+* retrieve_start / retrieve_end
+* answer_start / answer_end
 
-## Notas
+---
 
-- Para GitHub privado, define `GITHUB_TOKEN` en `.env`.
-- Para Open WebUI, entra a `http://localhost:3000`.
-- La API usa `SentenceTransformer` para embeddings y Qdrant para almacenamiento vectorial.
+## ⚠️ Known Limitations (Phase 1)
+
+* No reranking
+* No hybrid search
+* Basic chunking
+* No repo filtering
+* No streaming
+* No incremental indexing
+
+---
+
+## 🧭 Roadmap
+
+### Phase 2
+
+* Better code chunking (Tree-sitter)
+* Reranker (cross-encoder)
+* Hybrid search (dense + sparse)
+* Repo-aware filtering
+
+### Phase 3
+
+* Langfuse observability
+* Streaming responses
+* Multi-repo reasoning
+* Incremental indexing
+
+### Phase 4
+
+* Agents (LangGraph)
+* Code execution tools
+* CI/CD integration
+
+---
+
+## 🧠 Learnings
+
+This project demonstrates:
+
+* RAG architecture
+* Vector databases
+* Local LLM serving
+* Prompt engineering
+* AI system design
+
+---
+
+## 📌 Tech Stack
+
+* Python
+* FastAPI
+* LangChain / LangGraph
+* Qdrant
+* Ollama
+* Docker
+
+---
+
+## 📈 Future Improvements
+
+* Add embeddings optimization
+* Add caching layer
+* Improve latency
+* Add authentication
+
+---
+
+## 👨‍💻 Author
+
+Built as a hands-on project to learn production-grade RAG systems.

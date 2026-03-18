@@ -1,4 +1,4 @@
-# RepoRAG
+# CodeRAG
 
 RAG (Retrieval-Augmented Generation) system for querying private code repositories using local LLMs, Qdrant and LangChain/LangGraph.
 
@@ -6,7 +6,7 @@ RAG (Retrieval-Augmented Generation) system for querying private code repositori
 
 ## 🚀 Overview
 
-RepoRAG allows you to ask natural language questions about private repositories (code, business logic, architecture) and get contextual answers based on indexed source code.
+CodeRAG allows you to ask natural language questions about private repositories (code, business logic, architecture) and get contextual answers based on indexed source code.
 
 It is fully self-hosted and runs locally using Docker.
 
